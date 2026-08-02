@@ -6282,7 +6282,13 @@ try {
       copyFileSync(join(ROOT, 'followup-cadence.mjs'), join(e2eTmp, 'followup-cadence.mjs'));
       copyFileSync(join(ROOT, 'tracker-parse.mjs'), join(e2eTmp, 'tracker-parse.mjs'));
       copyFileSync(join(ROOT, 'tracker-aliases.json'), join(e2eTmp, 'tracker-aliases.json'));
-      symlinkSync(join(ROOT, 'node_modules'), join(e2eTmp, 'node_modules'), 'dir');
+      // Windows directory junctions do not require Developer Mode or elevated
+      // symlink privileges. Other platforms retain a normal directory symlink.
+      symlinkSync(
+        join(ROOT, 'node_modules'),
+        join(e2eTmp, 'node_modules'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
       mkdirSync(join(e2eTmp, 'data'), { recursive: true });
       writeFileSync(join(e2eTmp, 'data', 'applications.md'), [
         '# Applications Tracker',
