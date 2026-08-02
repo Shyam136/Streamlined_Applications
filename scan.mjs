@@ -915,13 +915,17 @@ export function normalizeUrlForDedup(url) {
   return parsed.toString();
 }
 
-export function loadSeenUrls(policy = {}) {
+export function loadSeenUrls(policy = {}, {
+  scanHistoryPath = SCAN_HISTORY_PATH,
+  pipelinePath = PIPELINE_PATH,
+  applicationsPath = APPLICATIONS_PATH,
+} = {}) {
   const seen = new Set();
   let recheckEligible = 0;
 
   // scan-history.tsv
-  if (existsSync(SCAN_HISTORY_PATH)) {
-    const lines = readFileSync(SCAN_HISTORY_PATH, 'utf-8').split('\n');
+  if (existsSync(scanHistoryPath)) {
+    const lines = readFileSync(scanHistoryPath, 'utf-8').split('\n');
     for (const line of lines.slice(1)) { // skip header
       const [url, firstSeen, , , , status = 'added'] = line.split('\t');
       if (!url) continue;
@@ -931,16 +935,16 @@ export function loadSeenUrls(policy = {}) {
   }
 
   // pipeline.md — extract URLs from checkbox lines
-  if (existsSync(PIPELINE_PATH)) {
-    const text = readFileSync(PIPELINE_PATH, 'utf-8');
+  if (existsSync(pipelinePath)) {
+    const text = readFileSync(pipelinePath, 'utf-8');
     for (const match of text.matchAll(/- \[[ x]\] (https?:\/\/\S+)/g)) {
       seen.add(normalizeUrlForDedup(match[1]));
     }
   }
 
   // applications.md — extract URLs from report links and any inline URLs
-  if (existsSync(APPLICATIONS_PATH)) {
-    const text = readFileSync(APPLICATIONS_PATH, 'utf-8');
+  if (existsSync(applicationsPath)) {
+    const text = readFileSync(applicationsPath, 'utf-8');
     for (const match of text.matchAll(/https?:\/\/[^\s|)]+/g)) {
       seen.add(normalizeUrlForDedup(match[0]));
     }
@@ -1520,16 +1524,16 @@ const PROCESSED_MARKERS = ['## Processed', '## Procesadas'];
 // Locked (pipeline-lock.mjs) so scan.mjs, scan-ats-full.mjs, and plugins.mjs
 // (pipeline mode) — the three current callers — can never interleave their
 // read-modify-write and silently drop each other's offers.
-export async function appendToPipeline(offers) {
+export async function appendToPipeline(offers, pipelinePath = PIPELINE_PATH) {
   if (offers.length === 0) return;
 
-  await withPipelineLock(PIPELINE_PATH, async () => {
+  await withPipelineLock(pipelinePath, async () => {
     // Auto-create with standard skeleton if missing (fresh-install guard).
-    if (!existsSync(PIPELINE_PATH)) {
-      writeFileSync(PIPELINE_PATH, PIPELINE_SKELETON, 'utf-8');
+    if (!existsSync(pipelinePath)) {
+      writeFileSync(pipelinePath, PIPELINE_SKELETON, 'utf-8');
     }
 
-    let text = readFileSync(PIPELINE_PATH, 'utf-8');
+    let text = readFileSync(pipelinePath, 'utf-8');
 
     const marker = PENDING_MARKERS.find(m => text.includes(m)) ?? null;
     const idx = marker !== null ? text.indexOf(marker) : -1;
@@ -1553,11 +1557,11 @@ export async function appendToPipeline(offers) {
       text = text.slice(0, insertAt) + block + text.slice(insertAt);
     }
 
-    writeFileSync(PIPELINE_PATH, text, 'utf-8');
+    writeFileSync(pipelinePath, text, 'utf-8');
   });
 }
 
-export function appendToScanHistory(offers, date, status = 'added') {
+export function appendToScanHistory(offers, date, status = 'added', historyPath = SCAN_HISTORY_PATH) {
   // Ensure file + header exist. The header names every column the row writer
   // (formatScanHistoryRow) emits, in the same order: the original 7 positional
   // cols (url…location) plus the append-only trailing cols added since —
@@ -1568,14 +1572,14 @@ export function appendToScanHistory(offers, date, status = 'added') {
   // by its `url\t` prefix, or skip non-URL col-0 rows, so widening it stays
   // backward-compatible. `status` is parameterized so callers can record verify
   // outcomes (`skipped_expired`, etc.) without the legacy `(expired)` suffix.
-  if (!existsSync(SCAN_HISTORY_PATH)) {
-    mkdirSync(path.dirname(SCAN_HISTORY_PATH), { recursive: true });
-    writeFileSync(SCAN_HISTORY_PATH, 'url\tfirst_seen\tportal\ttitle\tcompany\tstatus\tlocation\tfingerprint\tposted_at\ttrust_score\ttrust_flags\tnormalized_company\n', 'utf-8');
+  if (!existsSync(historyPath)) {
+    mkdirSync(path.dirname(historyPath), { recursive: true });
+    writeFileSync(historyPath, 'url\tfirst_seen\tportal\ttitle\tcompany\tstatus\tlocation\tfingerprint\tposted_at\ttrust_score\ttrust_flags\tnormalized_company\n', 'utf-8');
   }
 
   const lines = offers.map(o => formatScanHistoryRow(o, date, status)).join('\n') + '\n';
 
-  appendFileSync(SCAN_HISTORY_PATH, lines, 'utf-8');
+  appendFileSync(historyPath, lines, 'utf-8');
 }
 
 // ── Company blacklist (#1742) ───────────────────────────────────────
