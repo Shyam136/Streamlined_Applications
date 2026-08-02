@@ -43,9 +43,9 @@ The HTML template uses these design tokens:
 
 To customize fonts/colors, edit the CSS in the template. Update font files in `fonts/` if switching fonts.
 
-## Negotiation Scripts (modes/_shared.md)
+## Negotiation Scripts (`modes/_profile.md` or `config/profile.yml`)
 
-The negotiation section provides frameworks for salary discussions. Replace the example scripts with your own:
+The shared negotiation section provides reusable frameworks. Put personal ranges, narratives, and scripts in `modes/_profile.md` or structured values in `config/profile.yml`; never place user-specific content in `modes/_shared.md`:
 - Target ranges
 - Geographic arbitrage strategy
 - Pushback responses
@@ -74,4 +74,6 @@ Save hooks in `.claude/settings.json` (Claude Code). OpenCode does not support h
 The canonical states rarely need changing. If you add new states, update:
 1. `templates/states.yml`
 2. `normalize-statuses.mjs` (alias mappings)
-3. `modes/_shared.md` (any references)
+3. Relevant system-mode references and compatibility tests
+
+State changes are shared-system changes, not user personalization. Prefer the existing canonical states unless the project itself is being extended.

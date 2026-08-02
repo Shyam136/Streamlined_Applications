@@ -8,7 +8,9 @@ Fortunately, **Career-Ops is completely AI-agnostic.** The pipeline relies on th
 
 ## 1. The Core Concept: Model Agnosticism
 
-Career-Ops is composed of local templates, Markdown prompts, and Node/Playwright scripts. The AI logic is driven entirely by whichever AI coding CLI you run it in (e.g., Claude Code, OpenCode, Qwen CLI, Codex, Antigravity CLI, or Grok Build CLI).
+Career-Ops is composed of local templates, Markdown prompts, and Node/Playwright scripts. The AI logic is driven entirely by whichever AI coding CLI or model backend you run it with (e.g., Claude Code, OpenCode, Qwen CLI, Codex, Antigravity CLI, or Grok Build CLI).
+
+“Local-first” means canonical storage stays in your checkout. A hosted model backend may receive the CV, JD, and prompt context needed for a request. Use a local model when inference data must remain on the machine. Deterministic scanners are **zero-LLM**; prompt-based evaluation and tailoring are not.
 
 By choosing a CLI that supports custom model configurations and routing it to a cheaper API provider or local LLM, you can drastically reduce your pipeline running costs without losing any functionality.
 
@@ -232,7 +234,7 @@ To prevent unnecessary API costs or hitting rate limits, implement the following
 Here is a concrete, end-to-end walkthrough of scanning for jobs and evaluating a single posting using **DeepSeek V3 via OpenRouter** and the standalone `openai-eval.mjs` evaluator. This bypasses the need for an expensive CLI agent for the heavy evaluation block.
 
 ### Step 1: Scan for Job Offers (0 Tokens)
-The portal scanner queries ATS APIs directly using Playwright and standard HTTPS requests. It doesn't use the LLM to read job boards.
+The standard portal scanner queries public ATS APIs with ordinary HTTPS requests and does not use an LLM. Playwright is used only for sources or verification paths that require a rendered browser.
 ```bash
 node scan.mjs
 ```

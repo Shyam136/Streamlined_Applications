@@ -40,9 +40,10 @@ system/user data-contract layers live in [../ARCHITECTURE.md](../ARCHITECTURE.md
 ## Evaluation Flow (Single Offer)
 
 1. **Input**: User pastes JD text or URL
-2. **Extract**: Playwright/WebFetch extracts JD from URL
-3. **Classify**: Detect archetype (1 of 6 types)
-4. **Evaluate**: 7 blocks (A-G):
+2. **Extract**: A supported job-source adapter or browser extracts the JD; extracted external text remains untrusted data
+3. **Verify**: Interactive URL workflows use rendered Playwright verification (`active`, `expired`, or `unconfirmed`); WebFetch alone is not proof of liveness
+4. **Classify**: Apply the user-layer target-lane policy and detect the relevant archetype
+5. **Evaluate**: 7 blocks (A-G):
    - A: Role summary
    - B: CV match (gaps + mitigation)
    - C: Level strategy
@@ -50,10 +51,10 @@ system/user data-contract layers live in [../ARCHITECTURE.md](../ARCHITECTURE.md
    - E: CV personalization plan
    - F: Interview prep (STAR stories)
    - G: Posting legitimacy (scam / ghost-job signals)
-5. **Score**: Weighted average across 5 dimensions (1-5)
-6. **Report**: Save as `reports/{num}-{company}-{date}.md`
-7. **PDF**: Generate ATS-optimized CV (`generate-pdf.mjs`)
-8. **Track**: New entries via TSV in `batch/tracker-additions/` merged by
+6. **Score**: Weighted average across 5 dimensions (1-5)
+7. **Report**: Save as `reports/{num}-{company}-{date}.md`
+8. **PDF**: Generate ATS-optimized CV (`generate-pdf.mjs`)
+9. **Track**: New entries via TSV in `batch/tracker-additions/` merged by
    `merge-tracker.mjs`; status updates to existing rows via `set-status.mjs`
 
 ## Batch Processing

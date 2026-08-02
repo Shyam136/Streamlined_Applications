@@ -2,6 +2,8 @@
 
 Career-ops is AI-agnostic and runs on several command-line agent tools. The core logic is shared via `AGENTS.md`, while CLI-specific nuances are handled through entry wrappers in the repository root.
 
+The planned six-agent architecture uses VS Code with Codex as this project's development loop. The table below describes retained career-ops runtime compatibility; it does not expand the target development interface.
+
 | CLI | Entry File | How to Invoke |
 | --- | --- | --- |
 | Claude Code | `CLAUDE.md` | Interactive: `claude` (then `/career-ops`). Headless/Batch: `claude -p "prompt"` |

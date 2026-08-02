@@ -70,7 +70,7 @@ Yes: there's a `Dockerfile` and `docker-compose.yml` in the repo root. Note that
 
 ## Does career-ops sync across devices?
 
-No. Everything is files in your checkout, and there is no cloud component. People who want this put the directory in a synced folder.
+There is no built-in cloud canonical store or automatic cross-device sync. Everything authoritative is stored as files in your checkout; people who want file sync place the directory in a synced folder. This storage statement is separate from model execution: a hosted AI CLI or model backend may receive prompt context according to its configuration.
 
 ## How do I get an issue assigned to me?
 

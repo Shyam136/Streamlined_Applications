@@ -2,6 +2,8 @@
 
 career-ops was built for AI coding CLIs, but it also runs inside [Claude Cowork](https://www.anthropic.com/news/cowork) — Anthropic's desktop "work with your files" surface — with no changes to the system. If a terminal is a barrier for you, this is the friendlier door.
 
+The planned six-agent architecture uses VS Code with Codex as this project's development interface. That development decision does not remove existing runtime compatibility with Cowork or the other supported career-ops surfaces.
+
 **First-party verified (July 2026):** the full cycle — onboarding from a PDF CV, portal config, a complete A–G evaluation of a live Greenhouse posting, and canonical tracker registration via `merge-tracker.mjs` — ran end to end inside Cowork. Bonus: Cowork renders the onboarding steps as native clickable options and a progress checklist.
 
 ## How it works

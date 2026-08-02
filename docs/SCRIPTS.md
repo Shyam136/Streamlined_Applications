@@ -38,7 +38,7 @@ All scripts live in the project root as `.mjs` modules. Most are exposed via
 | `npm run freshness` | `check-table-freshness.mjs` | Staleness validator for jurisdiction data tables (`as_of` / `next_effective` watchdog) |
 | `npm run openai:tailor` | `openai-tailor.mjs` | Tailor a CV via any OpenAI-compatible endpoint (headless companion to `openai-eval.mjs`) |
 | `npm run or` | `openrouter-runner.mjs` | Run scan/evaluate/pipeline/apply on OpenRouter free models — no Claude CLI required |
-| `npm run reconcile` | `reconcile-pipeline.mjs` | Remove batch-evaluated offers from pipeline.md "Pendientes" |
+| `npm run reconcile` | `reconcile-pipeline.mjs` | Remove batch-evaluated postings from pipeline.md `## Pending` (localized modes may use compatible translated headings) |
 | `npm run cover-letter` | `generate-cover-letter.mjs` | Render a cover-letter JSON payload to PDF |
 | `npm run verify:portals` | `verify-portals.mjs` | Probe ATS endpoints to confirm portals.yml slugs resolve (network) |
 | `node fix-slugs.mjs` | `fix-slugs.mjs` | Write `verify-portals.mjs`'s suggested ATS slug fixes back to portals.yml (dry run by default, `--fix` to write) |
@@ -67,7 +67,7 @@ npm run doctor
 
 ## verify
 
-Health check for pipeline data integrity. Validates `data/applications.md` against nine rules: canonical statuses (per `templates/states.yml`), no duplicate company+role pairs, all report links point to existing files, scores match `X.XX/5` / `N/A` / `DUP`, rows have proper pipe-delimited format, no pending TSVs in `batch/tracker-additions/`, no markdown bold in scores, no two `reports/*.md` files covering the same company+role, and no orphan reports without a tracker row (#1425). The report checks are warning-level: duplicate reports can be legitimate (re-evaluation after a JD change), so they never fail the run.
+Health check for pipeline data integrity. Validates `data/applications.md` against nine rules: canonical statuses (per `templates/states.yml`), no duplicate company+role pairs, all report links point to existing files, scores are numeric `/5` values or recognized compatibility sentinels, rows have proper pipe-delimited format, no pending TSVs in `batch/tracker-additions/`, no markdown bold in scores, no two `reports/*.md` files covering the same company+role, and no orphan reports without a tracker row (#1425). New writers emit `X.X/5` and use `N/A`, `—`, or `-` for no score. The parser also reads other numeric precision and historical `DUP` for backward compatibility; new rows do not emit `DUP`. The report checks are warning-level: duplicate reports can be legitimate (re-evaluation after a JD change), so they never fail the run.
 
 ```bash
 npm run verify
@@ -459,9 +459,9 @@ npm run rollback
 
 ## liveness
 
-Tests whether job posting URLs are still live. Two rungs: a zero-token ATS API check first (`liveness-api.mjs` — Greenhouse, Lever, Ashby, Workday), falling back to headless Chromium (`liveness-browser.mjs`) for non-ATS pages or when the API is inconclusive. The browser rung detects expired patterns (e.g. "job no longer available"), HTTP 404/410, ATS redirect patterns, and apply-button presence, and supports multi-language expired patterns (English, German, French).
+Tests whether job posting URLs still appear live. Two rungs: a zero-LLM ATS API probe first (`liveness-api.mjs` — Greenhouse, Lever, Ashby, Workday), falling back to headless Chromium (`liveness-browser.mjs`) for non-ATS pages or when the API is inconclusive. The browser rung detects expired patterns (e.g. "job no longer available"), HTTP 404/410, ATS redirect patterns, and apply-button presence, and supports multi-language expired patterns (English, German, French).
 
-Per-job ATS endpoints (Greenhouse, Lever, Workday) treat a 200 as proof the posting is live; Ashby's public API is org-level (the whole job board), so that rung parses the board and confirms the specific job id is still listed. A definitive 404/410 from any ATS API is authoritative and short-circuits the browser check entirely — zero tokens, no browser launch.
+Per-job ATS endpoints (Greenhouse, Lever, Workday) use a 200 as an `active` freshness signal; Ashby's public API is org-level (the whole job board), so that rung parses the board and confirms the specific job id is still listed. A definitive 404/410 is an authoritative expiry signal. For an interactive evaluation or application, an active API signal does not replace the repository's rendered Playwright verification requirement.
 
 ```bash
 npm run liveness -- https://example.com/job/123
@@ -471,7 +471,7 @@ npm run liveness -- --no-fallback https://a.com/job/1   # stay fully headless (n
 npm run liveness -- --throttle=5000 --file urls.txt      # jittered wait between checks (rate-based WAFs)
 ```
 
-Each URL gets a verdict: `active`, `expired`, or `uncertain` with a reason.
+The current CLI returns the legacy verdicts `active`, `expired`, or `uncertain` with a reason. Target architecture adapters map `uncertain` to `unconfirmed`; new architecture prose uses `active`, `expired`, and `unconfirmed`.
 
 **Exit codes:** `0` all URLs active, `1` any expired or uncertain.
 
@@ -597,7 +597,7 @@ Source diagnostics are included in JSON output and surfaced in human output when
 
 ## tracker
 
-SQLite **derived index** for the applications tracker (RFC #918, phase 1). `data/applications.md` stays the source of truth; `data/applications.db` is built from it by `sync` and is safe to delete at any time — it regenerates on the next sync. All writes keep going to the markdown exactly as today (`merge-tracker.mjs`, hand edits); the index is read-only infrastructure.
+SQLite **derived index** for the applications tracker (RFC #918, phase 1). `data/applications.md` permanently stays the source of truth; `data/applications.db` is built from it by `sync` and is safe to delete at any time — it regenerates on the next sync. Routine writes go through guarded Markdown paths (`merge-tracker.mjs`, `set-status.mjs`, and explicit repair/migration commands); the index is read-only infrastructure.
 
 Why: at hundreds of rows a markdown table degrades structurally (encoding corruption, column drift, `|` inside cells shifting columns), and agents grepping it get model-dependent results. The index normalizes on sync, so a query returns the same rows for every model on every CLI — and corruption is detected at sync time instead of propagating silently.
 
@@ -617,7 +617,7 @@ node tracker.mjs export --out repaired.md # write to a file (existing file backe
 
 `sync` detects and reports the corruption classes markdown accumulates — mojibake placeholder cells, scores stranded in the status column, non-canonical statuses (resolved via `templates/states.yml` aliases), missing/duplicate ids, stray pipes — and normalizes them **in the index only**; the markdown is never modified. Fix at the source with `normalize-statuses.mjs` / `dedup-tracker.mjs`, then re-sync. Status changes between syncs accumulate in a `status_events` table, which gives `analyze-patterns.mjs` a real funnel instead of only the current snapshot.
 
-`export` is the inverse of `sync` (round-trip `md → db → md` is lossless for clean input — enforced by `test-all.mjs`). It writes to stdout by default and never touches `applications.md` unless you explicitly pass it as `--out`. Phase 2 of #918 (DB becomes source of truth, markdown becomes a rendered view) is a separate, explicit per-user opt-in — not part of this script yet.
+`export` is the inverse of `sync` (round-trip `md → db → md` is lossless for clean input — enforced by `test-all.mjs`). It writes to stdout by default and never touches `applications.md` unless you explicitly pass it as `--out`. Export is a repair/read-model capability, not a path toward making the database canonical.
 
 **Exit codes:** `0` success, `1` validation error, missing prerequisites (Node < 22.5, no `applications.md` to index), or corruption found by `sync --check`.
 
@@ -682,7 +682,7 @@ npm run or:apply                # application assistance
 
 ## reconcile
 
-Syncs the `data/pipeline.md` "Pendientes" section with `batch/batch-state.tsv`.
+Syncs the canonical `data/pipeline.md` `## Pending` section with `batch/batch-state.tsv` (market-specific modes may recognize a localized compatible heading).
 `batch-runner.sh` records evaluated offers in the state file but never writes
 back to `pipeline.md`, so batch-processed offers would otherwise be
 re-surfaced by every later scan or pipeline run.

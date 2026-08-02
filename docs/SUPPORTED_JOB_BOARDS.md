@@ -1,6 +1,7 @@
 # Supported Job Boards
 
-Career-Ops scans job sources through provider modules in `providers/`. Each
+Career-Ops scans job sources through job-source adapter modules in `providers/`.
+The configuration key remains `provider:` for backward compatibility. Each
 non-helper `*.mjs` file maps to one supported source. Files prefixed with `_`
 are shared helpers and are not loaded as providers.
 
@@ -70,5 +71,5 @@ are shared helpers and are not loaded as providers.
 | Workday | API | Auto-detects `<tenant>.<instance>.myworkdayjobs.com[/<locale>]/<site>` careers URLs and posts to the public CXS jobs endpoint; paginates via offset up to `max_pages` (default 100), warning if a tenant's postings exceed the cap. |
 | Working Nomads | API | Reads the board-wide `https://www.workingnomads.com/api/exposed_jobs/` JSON feed, then applies scanner filters. |
 
-When adding a new provider, add a new non-helper module under `providers/` and
+When adding a new job-source adapter, add a new non-helper module under `providers/` and
 update this table in the same PR.

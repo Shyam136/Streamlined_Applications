@@ -45,4 +45,4 @@ codex exec "Run career-ops tracker mode and summarize the current statuses."
 
 - If your Codex environment exposes slash commands, the shared `/career-ops` router semantics still apply.
 - If it does not, use the same mode names through prompts or `codex exec`.
-- Browser-heavy flows such as `scan`, `pipeline`, and `apply` still depend on Playwright browser tools being available in the active agent setup.
+- Browser verification, browser-only sources, PDF rendering, and `apply` depend on Playwright being available. Ordinary public-API scanning remains zero-LLM and does not require a browser unless `--verify` or a browser-backed source is used.

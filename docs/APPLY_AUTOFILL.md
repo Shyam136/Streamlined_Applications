@@ -13,7 +13,7 @@ We have field-tested the auto-fill flow across several major ATS platforms (Ashb
 
 ### Ashby
 
-- **Duplicate Prevention:** Ashby merges candidates based on their email. Before filling out the form, the agent checks if you've already applied to this company. If so, it warns you and suggests a modified email alias (like `you+teamname@domain.com`) to prevent silent failures or unintended profile merges.
+- **Duplicate Prevention:** Ashby may merge candidates based on their email. Before filling out the form, the agent checks whether the same posting is already tracked as applied. If so, it stops and asks you to review the existing application; it does not suggest an email alias to bypass duplicate detection.
 
 ### Lever
 

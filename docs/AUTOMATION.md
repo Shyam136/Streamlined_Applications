@@ -1,27 +1,27 @@
-# Automation: recurring scans + a zero-token triage
+# Automation: recurring scans + a low-token triage
 
 `career-ops` offers to scan for you on a schedule ("just say *scan every 3 days*"),
 but the actual scheduling is left to your operating system. This page ships the
-recipe: how to run the scanner unattended, and a cheap, zero-token **triage** pass
+recipe: how to run the scanner unattended, and a cheap, low-token **triage** pass
 that turns a pile of freshly-scanned URLs into a short "worth a look" list — *before*
 you spend any tokens evaluating them.
 
 Two independent pieces, smallest first. You can use either on its own.
 
 - **[1. Schedule the scan](#1-schedule-the-scan)** — run `node scan.mjs` on cron /
-  launchd / Windows Task Scheduler. Zero tokens: the scanner only reads public
+  launchd / Windows Task Scheduler. Zero-LLM: the scanner only reads public
   job-board APIs and appends URLs to `data/pipeline.md`.
 - **[2. Triage the queue](#2-triage-the-queue)** — a Read/Write-only prompt that
   reads `## Pending` from `data/pipeline.md`, compares each posting against
   `config/profile.yml`, and writes a shortlist you actually open. No web, no JD
   extraction, no PDFs, no subagents.
 
-> Everything here is **local-first**: your CV, profile, and pipeline stay on your
-> machine — none of your data is uploaded. The scan does reach out to *public*
-> job-board APIs to read listings (the same zero-key reads the manual scan makes),
-> but it sends none of your personal data with them, and the triage only reads your
-> local files. Evaluating a shortlisted role later (`/career-ops pipeline`) is the
-> only step that spends tokens.
+> Everything here uses local canonical storage: your CV, profile, and pipeline remain
+> files in your checkout. The scan reaches public job-board APIs but makes no model
+> request and sends no candidate profile to those boards. The triage prompt does use
+> the configured model backend, which may receive the two named local files; use a
+> local model if that context must not leave the machine. Full evaluation later
+> (`/career-ops pipeline`) uses additional model context.
 
 ---
 
@@ -159,8 +159,9 @@ that already cleared a free title/location filter.
 
 ## How this fits the rest of career-ops
 
-- **Zero-token by default.** Scheduling and triage cost nothing; only the eval you
-  choose to run spends tokens.
+- **Zero-LLM scan, low-token triage.** Scheduling the deterministic scan makes no
+  model request; the optional triage uses one small model prompt. Full evaluation is
+  the more expensive step.
 - **Complements batch-eval savings.** This is the *scheduling + first-glance* layer
   that comes *before* evaluation. Optimizations to the evaluation stage itself are
   separate and stack on top.

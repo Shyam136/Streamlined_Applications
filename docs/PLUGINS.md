@@ -48,6 +48,11 @@ them. Reach the network **only** through `ctx.fetch` (your manifest
 `allowedHosts` is enforced, with SSRF protection). Keys arrive via `ctx.env`,
 non-secret settings via `ctx.settings`.
 
+`provider` is the legacy manifest hook name. In the target architecture it is a
+**job-source adapter** hook and its `Job[]` output is adapted into the same
+versioned `NormalizedPosting` model as core sources. It is unrelated to an LLM
+**model backend**.
+
 See `plugins/README.md` for the full contract + the honest trust model (plain
 ESM has no hard sandbox — bundled plugins are code-reviewed; your own are your
 trust).
