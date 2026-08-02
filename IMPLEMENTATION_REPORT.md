@@ -38,12 +38,14 @@ The new entry point is `discover(task)` from `discovery-agent.mjs`, where `task`
 - `node test-all.mjs --only scan-`: 50 passed, 0 failed, 0 warnings.
 - `node verify-pipeline.mjs`: passed.
 - `git diff --check`: passed; Git reported only expected LF-to-CRLF working-tree notices.
-- `node test-all.mjs --quick`: 2,816 passed, 1 failed, 3 warnings. The single failure is unrelated to Discovery: the existing `analyze() appDateSource` end-to-end check could not create a Windows temporary-directory symlink to `node_modules` (`EPERM`). Discovery and scanner compatibility tests passed within the same run.
+- `node test-all.mjs --quick`: 2,831 passed, 0 failed, 3 expected warnings. A Windows-only test-fixture failure was corrected by using a directory junction instead of a privileged directory symlink.
+- `node validate-system-paths-coverage.mjs`: passed with all Spec 001 system files registered for updater delivery.
 
 ## Commits
 
 - `622dcd4` — `feat(discovery): add spec 001 contracts and services`
 - `48d5109` — `feat(discovery): add agent orchestration and persistence`
+- `b824688` — `fix(discovery): ship milestone files and harden Windows tests`
 
 ## Explicitly Deferred
 
