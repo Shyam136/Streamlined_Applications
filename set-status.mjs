@@ -8,7 +8,7 @@
  * modes (apply Step 9, followup, batch) call this instead of editing the table.
  *
  * Usage:
- *   node set-status.mjs <report#|company> <state> [--note "..."] [--role "..."] [--force] [--dry-run] [--json]
+ *   node set-status.mjs <report#|company> <state> [--note "..."] [--role "..."] [--expected-state "..."] [--force] [--dry-run] [--json]
  *
  * Row resolution:
  *   - --row N     → exact match on the # column, stated explicitly
@@ -43,6 +43,8 @@
  * aliases resolve to the canonical label; anything else is rejected before the
  * tracker is touched). --note appends to the Notes cell with "; " and is
  * idempotent — re-running the same command is always safe.
+ * --expected-state adds an atomic compare-and-set guard for orchestrators: the
+ * update is rejected under the writer lock if another worker changed the row.
  *
  * The read-modify-write runs under the shared tracker lock (tracker-utils.mjs,
  * same lock as merge-tracker.mjs) and the file is replaced atomically. Only the
@@ -109,8 +111,8 @@ const USAGE = `Usage: node set-status.mjs <report#|company> <state> [--note "...
 
 const rawArgs = process.argv.slice(2);
 const positional = [];
-const flags = { note: null, role: null, on: null, row: null, report: null, force: false, dryRun: false, json: false };
-const VALUE_FLAGS = { '--note': 'note', '--role': 'role', '--on': 'on', '--row': 'row', '--report': 'report' };
+const flags = { note: null, role: null, on: null, row: null, report: null, expectedState: null, force: false, dryRun: false, json: false };
+const VALUE_FLAGS = { '--note': 'note', '--role': 'role', '--on': 'on', '--row': 'row', '--report': 'report', '--expected-state': 'expectedState' };
 
 for (let i = 0; i < rawArgs.length; i++) {
   const a = rawArgs[i];
@@ -211,6 +213,11 @@ const newStatus = resolveCanonicalState(stateInput, states);
 if (!newStatus) {
   const valid = states.map(s => s.label).join(' · ');
   failWith(EXIT_USAGE, 'invalid-state', `"${stateInput}" is not a canonical state. Valid states: ${valid}`);
+}
+const expectedStatus = flags.expectedState == null ? null : resolveCanonicalState(flags.expectedState, states);
+if (flags.expectedState != null && !expectedStatus) {
+  const valid = states.map(s => s.label).join(' · ');
+  failWith(EXIT_USAGE, 'invalid-expected-state', `"${flags.expectedState}" is not a canonical state. Valid states: ${valid}`);
 }
 
 // ── tracker access ───────────────────────────────────────────────
@@ -327,6 +334,18 @@ if (rows.length === 0) {
 }
 
 const target = resolveRow(rows);
+
+// Compare-and-set guard for orchestrated and concurrent callers. This check is
+// deliberately inside the same tracker lock as the write, so two workers that
+// read the same prior state cannot both commit conflicting transitions.
+if (expectedStatus !== null && target.status !== expectedStatus) {
+  failWith(
+    EXIT_AMBIGUOUS,
+    'state-conflict',
+    `Tracker #${target.num} is ${target.status}, expected ${expectedStatus}; no changes were written.`,
+    { trackerNum: target.num, actualState: target.status, expectedState: expectedStatus },
+  );
+}
 
 // A BARE numeric selector is often copied from a report filename. If the row ID
 // disagrees with its local report link, silently updating that row can affect

@@ -5,6 +5,8 @@ The `apply` mode interactive assistant helps you fill out applications for job p
 **CRITICAL RULE: Career-Ops never submits.**
 The agent prepares the responses, selects the options, and types out the text fields. **You always click Submit.** This ensures you have the final say and gives you a chance to review the application before it is sent.
 
+This rule applies to the interactive `apply` mode. The separate continuous runner can optionally submit only when `config/automation.yml` explicitly selects `submission.mode: automatic`, carries the authorization token, allowlists the exact ATS host, resolves every required field from user-owned profile data, encounters no CAPTCHA, and records a durable submission intent. Review mode remains the default.
+
 ---
 
 ## 1. How It Works Per ATS

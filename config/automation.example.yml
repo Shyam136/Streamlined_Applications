@@ -1,0 +1,31 @@
+# Copy to config/automation.yml after onboarding and review every limit.
+interval_minutes: 60
+max_applications_per_day: 20
+min_score: 4.0
+tailor: true
+
+submission:
+  # review prepares applications but never performs the final external action.
+  # automatic uses the Playwright adapter and stops on CAPTCHA, unresolved
+  # required fields, ambiguous final controls, or missing confirmation evidence.
+  mode: review
+  confirmation: ""
+  allowed_hosts:
+    - boards.greenhouse.io
+    - job-boards.greenhouse.io
+    - boards.eu.greenhouse.io
+    - jobs.lever.co
+    - jobs.ashbyhq.com
+  # Sensitive/legal fields remain unresolved unless their exact field label or
+  # name is listed here and a value exists in profile.application_answers.fields.
+  approved_sensitive_fields: []
+
+outcomes:
+  # none reads an existing data/reply-candidates.json; gmail additionally polls
+  # one explicitly configured label using read-only OAuth credentials from .env.
+  ingest: none
+  gmail_label: "Job Replies"
+  days_back: 14
+  # automatic applies only high-confidence deterministic tracker transitions.
+  # Ambiguous or unmatched replies remain review items.
+  mode: review

@@ -9,6 +9,9 @@ All scripts live in the project root as `.mjs` modules. Most are exposed via
 | Command | Script | Purpose |
 |---------|--------|---------|
 | `npm run doctor` | `doctor.mjs` | Validate setup prerequisites |
+| `npm run automation` | `automation-runner.mjs` | Run one resumable automation cycle |
+| `npm run automation:watch` | `automation-runner.mjs` | Continuously run configured cycles |
+| `npm run automation:status` | `automation-runner.mjs` | Inspect the durable cycle checkpoint |
 | `npm run verify` | `verify-pipeline.mjs` | Check pipeline data integrity |
 | `npm run normalize` | `normalize-statuses.mjs` | Fix non-canonical statuses |
 | `npm run dedup` | `dedup-tracker.mjs` | Remove duplicate tracker entries |
@@ -802,6 +805,26 @@ binary on Windows. Requires Go 1.24+.
 npm run build:dashboard
 npm run serve:dashboard    # or run the TUI directly without building
 ```
+
+---
+
+## automation
+
+Runs discovery, pending-posting evaluation, tailoring, and tracker verification as a durable cycle. Copy `config/automation.example.yml` to the ignored user-layer `config/automation.yml`, then configure the interval, daily cap, score threshold, and submission policy.
+
+```bash
+npm run automation          # one cycle
+npm run automation:watch    # repeat until stopped or human review is required
+npm run automation:status   # inspect data/automation-state.json
+```
+
+The runner writes a checkpoint after every phase, resumes the active cycle after transient failure, reclaims stale PID locks, and refuses concurrent instances. Evaluation archives the fetched JD beside its report; high-scoring rows without an indexed PDF then flow through `openai-tailor.mjs` and `generate-pdf.mjs`, followed by tracker PDF-flag synchronization. Legacy reports that lack an archived JD stop with an actionable review item instead of fabricating tailoring context.
+
+Tailoring uses the existing `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL` endpoint configuration. If only `OPENROUTER_API_KEY` is configured, it reuses OpenRouter when `CAREER_OPS_MODEL` is explicitly pinned; it never guesses a possibly paid model.
+
+`submission.mode: review` prepares a verified fill plan and stops for review. `automatic` additionally requires the literal `I_AUTHORIZE_AUTOMATIC_SUBMISSION` confirmation and an exact host allowlist. Its Playwright ApplicationAgent stops on CAPTCHA, unresolved required/sensitive fields, ambiguous final controls, or missing success evidence. A write-ahead submission ledger prevents a crash after clicking from becoming a blind duplicate retry and reconciles the daily cap after process failure. In automatic mode, application-specific review items are quarantined so other eligible applications continue; reaching the daily cap pauses future work without terminating the watcher.
+
+After submission, any existing `data/reply-candidates.json` is deterministically classified. Set `outcomes.ingest: gmail` to poll only `outcomes.gmail_label` using the read-only OAuth values documented in `.env.example`; authenticated messages are deduplicated by Gmail message ID. `outcomes.mode: review` pauses on actionable replies. `automatic` commits only high-confidence, conflict-free status transitions through TrackerAgent while retaining ambiguous or unmatched replies as review diagnostics.
 
 ---
 

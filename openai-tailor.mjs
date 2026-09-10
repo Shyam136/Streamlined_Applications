@@ -19,7 +19,7 @@
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
-import yaml from 'js-yaml';
+import { deriveTailoringArtifactNames } from './lib/tailoring-artifacts.mjs';
 
 try {
   const { config } = await import('dotenv');
@@ -65,6 +65,7 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     --url <base>     OpenAI-compatible base URL, including any /v1
                      (env OPENAI_BASE_URL, default https://api.openai.com/v1)
     --key <key>      API key             (env OPENAI_API_KEY)
+    --json           Print a final machine-readable artifact manifest
     --help           Show this help
 
   ENV
@@ -79,9 +80,10 @@ if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
 // Parse flags
 let jdPath     = '';
 let reportPath = '';
-let modelName  = process.env.OPENAI_MODEL || 'gpt-4o'; // Tailoring needs a smarter model default than eval
-let baseUrl    = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
+let modelName  = process.env.OPENAI_MODEL || '';
+let baseUrl    = (process.env.OPENAI_BASE_URL || '').replace(/\/$/, '');
 let apiKey     = process.env.OPENAI_API_KEY || '';
+let jsonOutput = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--jd' && args[i + 1]) {
@@ -94,8 +96,24 @@ for (let i = 0; i < args.length; i++) {
     baseUrl = args[++i].replace(/\/$/, '');
   } else if (args[i] === '--key' && args[i + 1]) {
     apiKey = args[++i];
+  } else if (args[i] === '--json') {
+    jsonOutput = true;
   }
 }
+
+let openRouterHost = false;
+try { openRouterHost = new URL(baseUrl || 'https://api.openai.com').hostname === 'openrouter.ai'; } catch { /* endpoint guard reports it below */ }
+if (!apiKey && process.env.OPENROUTER_API_KEY && (!baseUrl || openRouterHost)) {
+  apiKey = process.env.OPENROUTER_API_KEY;
+  baseUrl = baseUrl || 'https://openrouter.ai/api/v1';
+  modelName = modelName || process.env.CAREER_OPS_MODEL || '';
+  if (!modelName) {
+    console.error('❌  OpenRouter tailoring requires CAREER_OPS_MODEL to be pinned explicitly; refusing to choose a potentially paid model.');
+    process.exit(1);
+  }
+}
+baseUrl = baseUrl || 'https://api.openai.com/v1';
+modelName = modelName || 'gpt-4o';
 
 if (!jdPath || !reportPath) {
   console.error('❌  Both --jd and --report are required. Run with --help for usage.');
@@ -113,19 +131,6 @@ if (!existsSync(reportPath)) {
 
 const jdText = readFileSync(jdPath, 'utf-8').trim();
 const reportText = readFileSync(reportPath, 'utf-8').trim();
-
-// Attempt to parse company slug and candidate name
-const reportFilename = basename(reportPath);
-const match = reportFilename.match(/^\d+-([a-z0-9-]+)-\d{4}-\d{2}-\d{2}\.md$/);
-const companySlug = match ? match[1] : 'unknown-company';
-
-// Extract role from report header (e.g., "# Evaluation: Company - Role Title")
-let roleSlug = 'role';
-const roleMatch = reportText.match(/^#\s+Evaluation:\s+[^-]+\s+-\s+(.+?)$/m);
-if (roleMatch && roleMatch[1]) {
-  roleSlug = roleMatch[1]
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
 
 // ---------------------------------------------------------------------------
 // Endpoint + security guard.
@@ -299,30 +304,21 @@ try {
     mkdirSync(PATHS.output, { recursive: true });
   }
 
-  let candidateName = 'candidate';
-  try {
-    const profile = yaml.load(profileContent);
-    if (profile && profile.name) {
-      candidateName = profile.name;
-    }
-  } catch (err) {
-    console.warn(`⚠️   Failed to parse profile.yml: ${err.message}`);
-  }
-  candidateName = candidateName
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-  const filename = `cv-${candidateName}-${companySlug}.html`;
-  const htmlPath = join(PATHS.output, filename);
+  const artifacts = deriveTailoringArtifactNames({ profileText: profileContent, reportPath, reportText });
+  const filename = basename(artifacts.htmlPath);
+  const htmlPath = join(ROOT, artifacts.htmlPath);
 
   writeFileSync(htmlPath, tailoredHtml, 'utf-8');
   console.log(`\n✅  Tailored HTML saved: ${htmlPath}`);
 
   // Print next steps
-  const pdfFilename = `cv-${candidateName}-${companySlug}-${roleSlug}-${new Date().toISOString().split('T')[0]}.pdf`;
-  const reportNumMatch = reportFilename.match(/^(\d+)-/);
-  const reportNum = reportNumMatch ? reportNumMatch[1] : '001';
+  const pdfFilename = basename(artifacts.pdfPath);
+  const reportNum = artifacts.reportNum;
 
   console.log(`\n📄  Next step (generate PDF):\n    node generate-pdf.mjs output/${filename} output/${pdfFilename} --format=letter --report=${reportNum}\n`);
+  if (jsonOutput) {
+    console.log(JSON.stringify(artifacts));
+  }
 
 } catch (err) {
   console.warn(`⚠️   Could not save HTML: ${err.message}`);

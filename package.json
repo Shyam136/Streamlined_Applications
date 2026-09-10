@@ -8,6 +8,9 @@
   },
   "scripts": {
     "doctor": "node doctor.mjs",
+    "automation": "node automation-runner.mjs run",
+    "automation:watch": "node automation-runner.mjs watch",
+    "automation:status": "node automation-runner.mjs status",
     "or": "node openrouter-runner.mjs",
     "or:scan": "node openrouter-runner.mjs scan",
     "or:pipeline": "node openrouter-runner.mjs pipeline",

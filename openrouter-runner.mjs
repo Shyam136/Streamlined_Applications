@@ -28,6 +28,7 @@ import {
   formatReportNumber, releaseReportNumbers, reserveReportNumbers,
 } from './reserve-report-num.mjs';
 import { TokenAccumulator, formatBreakdown, normalizeOpenAIUsage } from './utils/token-tracker.mjs';
+import { parseTrackerRows } from './find.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const tracker = new TokenAccumulator();
@@ -170,6 +171,58 @@ function writeFile(relPath, content) {
 
 function fileExists(relPath) {
   return fs.existsSync(path.join(__dirname, relPath));
+}
+
+function safeTrackerCell(value) {
+  return String(value).replace(/[\t\r\n|]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function stageEvaluationTrackerAddition({ num, today, slug, companyName, roleName, scoreValue, relPath, root = __dirname }) {
+  const numStr = formatReportNumber(num);
+  const scoreStr = Number.isFinite(scoreValue) ? `${scoreValue.toFixed(1)}/5` : '';
+  const reportLink = `[${numStr}](${relPath})`;
+  const tsvLine = `${num}\t${today}\t${safeTrackerCell(companyName)}\t${safeTrackerCell(roleName)}\tEvaluated\t${scoreStr}\t❌\t${reportLink}\t\n`;
+  const tsvFile = `batch/tracker-additions/or-${numStr}-${slug}.tsv`;
+  const target = path.join(root, tsvFile);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, `num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n${tsvLine}`, 'utf-8');
+  return tsvFile;
+}
+
+export function findCommittedEvaluation(url, root = __dirname) {
+  const reportsDir = path.join(root, 'reports');
+  if (!fs.existsSync(reportsDir)) return null;
+  for (const filename of fs.readdirSync(reportsDir).filter((name) => /^\d+-.*\.md$/.test(name)).sort()) {
+    const relPath = `reports/${filename}`;
+    const content = fs.readFileSync(path.join(root, relPath), 'utf-8');
+    const recordedUrl = content?.match(/^\*\*URL:\*\*\s*(\S+)/m)?.[1]?.replace(/[)>.,]+$/, '');
+    if (recordedUrl === url) return { filename, relPath, content };
+  }
+  return null;
+}
+
+export function recoverCommittedEvaluation(url, metadata = {}, root = __dirname) {
+  const report = findCommittedEvaluation(url, root);
+  if (!report) return null;
+  const match = report.filename.match(/^(\d+)-(.+)-(\d{4}-\d{2}-\d{2})\.md$/);
+  if (!match) return null;
+  const [, numStr, slug, today] = match;
+  const num = Number.parseInt(numStr, 10);
+  const trackerPath = path.join(root, 'data', 'applications.md');
+  const trackerText = fs.existsSync(trackerPath) ? fs.readFileSync(trackerPath, 'utf-8') : '';
+  const alreadyTracked = parseTrackerRows(trackerText).some((row) => Number(row.reportNum) === num);
+  if (!alreadyTracked) {
+    const heading = report.content.match(/^#\s+Evaluation:\s+(.+?)\s+-\s+(.+)$/m);
+    const scoreMatch = report.content.match(/(?:score|puntuaci[oó]n)[^\d]*(\d+\.?\d*)/i);
+    stageEvaluationTrackerAddition({
+      num, today, slug,
+      companyName: metadata.company || heading?.[1] || slug.replace(/-/g, ' '),
+      roleName: metadata.role || heading?.[2] || '(see report)',
+      scoreValue: scoreMatch ? Number.parseFloat(scoreMatch[1]) : NaN,
+      relPath: report.relPath, root,
+    });
+  }
+  return report.relPath;
 }
 
 // ---------------------------------------------------------------------------
@@ -600,7 +653,7 @@ async function cmdScan() {
 }
 
 // -- EVALUATE --
-async function cmdEvaluate(input, ctx) {
+async function cmdEvaluate(input, ctx, metadata = {}) {
   tracker.recordZeroToken('scan');
   tracker.recordZeroToken('pdf payload');
   const modeContent = readFile('modes/oferta.md') ?? readFile('modes/auto-pipeline.md') ?? '';
@@ -664,20 +717,19 @@ async function cmdEvaluate(input, ctx) {
     const slug    = extractCompanySlug(jdText, typeof input === 'string' ? input : null);
     const numStr  = formatReportNumber(num);
     const relPath = `reports/${numStr}-${slug}-${today}.md`;
+    const jdRelPath = `jds/${numStr}-${slug}-${today}.md`;
 
     // Extract Legitimacy from LLM output or fall back to placeholder
     const legitMatch = result.match(/\*\*Legitimacy:\*\*\s*([^\n]+)/);
     const legitLine  = legitMatch ? `**Legitimacy:** ${legitMatch[1].trim()}` : '**Legitimacy:** unconfirmed';
-    writeFile(relPath, `**URL:** ${input || '(pasted)'}\n${legitLine}\n\n${result}`);
+    const companyName = safeTrackerCell(metadata.company || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()));
+    const roleName = safeTrackerCell(metadata.role || '(see report)');
+    writeFile(jdRelPath, `# Job description: ${companyName} — ${roleName}\n\n**URL:** ${input || '(pasted)'}\n\n${jdText}\n`);
+    writeFile(relPath, `# Evaluation: ${companyName} - ${roleName}\n\n**URL:** ${input || '(pasted)'}\n**JD:** ${jdRelPath}\n${legitLine}\n\n${result}`);
 
     const scoreMatch  = result.match(/(?:score|puntuaci[oó]n)[^\d]*(\d+\.?\d*)/i);
     const scoreValue  = scoreMatch ? parseFloat(scoreMatch[1]) : NaN;
-    const scoreStr    = isFinite(scoreValue) ? `${scoreValue.toFixed(1)}/5` : '';
-    const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const reportLink  = `[${numStr}](reports/${numStr}-${slug}-${today}.md)`;
-    const tsvLine     = `${num}\t${today}\t${companyName}\t(see report)\tEvaluated\t${scoreStr}\t❌\t${reportLink}\t\n`;
-    const tsvFile     = `batch/tracker-additions/or-${numStr}-${slug}.tsv`;
-    writeFile(tsvFile, `num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\n${tsvLine}`);
+    stageEvaluationTrackerAddition({ num, today, slug, companyName, roleName, scoreValue, relPath });
 
     console.log(`\n✅ Report saved: ${relPath}`);
     console.log('\n─── EVALUATION ──────────────────────────────────────\n');
@@ -708,7 +760,9 @@ async function cmdPipeline(ctx) {
     const item = pending[i];
     console.log(`\n[${i + 1}/${pending.length}] ${item.company} — ${item.role}`);
     try {
-      const report = await cmdEvaluate(item.url, ctx);
+      const recovered = recoverCommittedEvaluation(item.url, item);
+      const report = recovered || await cmdEvaluate(item.url, ctx, item);
+      if (recovered) console.log(`  Resuming from committed report: ${recovered}`);
       if (report) markPipelineDone(item.url);
     } catch (e) {
       console.error(`  Error: ${e.message}`);

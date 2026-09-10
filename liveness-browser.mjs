@@ -190,7 +190,7 @@ async function resolveDnsCached(hostname) {
   }
 }
 
-async function validateUrlSecurity(urlString) {
+export async function validateUrlSecurity(urlString) {
   const url = new URL(urlString.endsWith('.') ? urlString.slice(0, -1) : urlString);
   const hostname = url.hostname;
   const host = normalizeHost(hostname);
