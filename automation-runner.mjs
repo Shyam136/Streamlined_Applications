@@ -16,7 +16,7 @@ import { deriveTailoringArtifactNames } from './lib/tailoring-artifacts.mjs';
 import { createApplicationAgent } from './application-agent.mjs';
 import { createPlaywrightApplicationPort } from './lib/playwright-application-port.mjs';
 import { createTrackerAgent } from './tracker-agent.mjs';
-import { countConfirmedSubmissions } from './lib/submission-ledger.mjs';
+import { countConfirmedSubmissions, countConfirmedSubmissionsSince } from './lib/submission-ledger.mjs';
 import { fetchGmailReplyCandidates } from './lib/gmail-reply-port.mjs';
 
 const runFile = promisify(execFile);
@@ -88,6 +88,7 @@ export function parseAutomationConfig(raw) {
     schemaVersion: '1.0',
     intervalMinutes: Number(source.interval_minutes ?? 60),
     maxApplicationsPerDay: Number(source.max_applications_per_day ?? 20),
+    maxApplicationsPerHour: Number(source.max_applications_per_hour ?? 15),
     minScore: Number(source.min_score ?? 4),
     tailor: source.tailor !== false,
     submission: {
@@ -156,6 +157,7 @@ export function createCompatibilityPhases(policy, options = {}) {
   const trackerFactory = options.trackerFactory || ((trackerOptions) => createTrackerAgent(trackerOptions));
   const applicationFactory = options.applicationFactory || ((applicationOptions) => createApplicationAgent(applicationOptions));
   const gmailFetcher = options.gmailFetcher || fetchGmailReplyCandidates;
+  const submissionLedger = options.submissionLedger || path.join(root, 'data', 'submission-ledger.json');
   const pendingCount = () => {
     if (!existsSync(path.join(root, 'data', 'pipeline.md'))) return 0;
     return readFileSync(path.join(root, 'data', 'pipeline.md'), 'utf-8').split(/\r?\n/).filter((line) => /^- \[ \] /.test(line)).length;
@@ -207,7 +209,12 @@ export function createCompatibilityPhases(policy, options = {}) {
       return { status: 'ok', diagnostics: reviewDiagnostics, tailoredCount: results.length, reviewCount: queue.blocked.length, results };
     },
     submit: async ({ today, usedToday }) => {
-      const remaining = Math.max(0, policy.maxApplicationsPerDay - usedToday);
+      const dailyRemaining = Math.max(0, policy.maxApplicationsPerDay - usedToday);
+      const hourlyCap = policy.maxApplicationsPerHour ?? policy.maxApplicationsPerDay;
+      const submittedLastHour = countConfirmedSubmissionsSince(submissionLedger, Date.now() - 60 * 60_000);
+      const hourlyRemaining = Math.max(0, hourlyCap - submittedLastHour);
+      const remaining = Math.min(dailyRemaining, hourlyRemaining);
+      if (remaining === 0) return { status: 'ok', diagnostics: [], submittedCount: 0, reviewedCount: 0, hourlyCapReached: true };
       const queue = buildApplicationQueue({ root, minScore: policy.minScore, limit: remaining });
       if (!queue.length) return { status: 'ok', diagnostics: [], submittedCount: 0, reviewedCount: 0 };
       const baseValues = loadVerifiedApplicationValues(root);
@@ -333,6 +340,7 @@ export function inspectAutomationReadiness(options = {}) {
     issues,
     policy: policy ? {
       intervalMinutes: policy.intervalMinutes, maxApplicationsPerDay: policy.maxApplicationsPerDay,
+      maxApplicationsPerHour: policy.maxApplicationsPerHour,
       minScore: policy.minScore, tailor: policy.tailor, submissionMode: policy.submission.mode,
       outcomeMode: policy.outcomes.mode, outcomeIngest: policy.outcomes.ingest,
     } : null,

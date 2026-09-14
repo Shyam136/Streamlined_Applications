@@ -18,8 +18,8 @@ try {
   const unsafe = structuredClone(basePolicy);
   unsafe.submission.mode = 'automatic';
   expect(validateAutomationPolicy(unsafe).some((item) => item.code === 'SUBMISSION_AUTHORIZATION_REQUIRED'), 'automatic submission requires an explicit authorization token');
-  const parsed = parseAutomationConfig('interval_minutes: 15\nmax_applications_per_day: 8\nmin_score: 4.2\nsubmission:\n  mode: review\n');
-  expect(parsed.intervalMinutes === 15 && parsed.maxApplicationsPerDay === 8 && parsed.minScore === 4.2 && parsed.outcomes.ingest === 'none', 'YAML policy maps to the runtime contract');
+  const parsed = parseAutomationConfig('interval_minutes: 15\nmax_applications_per_hour: 12\nmax_applications_per_day: 80\nmin_score: 4.2\nsubmission:\n  mode: review\n');
+  expect(parsed.intervalMinutes === 15 && parsed.maxApplicationsPerHour === 12 && parsed.maxApplicationsPerDay === 80 && parsed.minScore === 4.2 && parsed.outcomes.ingest === 'none', 'YAML policy maps to the runtime contract');
   const gmailPolicy = { ...basePolicy, outcomes: { mode: 'automatic', ingest: 'gmail', gmailLabel: 'Job Replies', daysBack: 14 } };
   expect(validateAutomationPolicy(gmailPolicy).length === 0, 'label-scoped Gmail outcome policy validates');
   expect(validateAutomationPolicy({ ...gmailPolicy, outcomes: { ...gmailPolicy.outcomes, gmailLabel: 'bad\nlabel' } }).some((item) => item.code === 'POLICY_INVALID'), 'multiline Gmail labels fail policy validation');

@@ -24,6 +24,11 @@ const server = http.createServer((request, response) => {
     response.end('<!doctype html><html><body><h1>Platform Engineer</h1><a href="/apply">Apply for this job</a></body></html>');
     return;
   }
+  if (request.url === '/duplicate-detail') {
+    response.writeHead(200, { 'content-type': 'text/html' });
+    response.end('<!doctype html><html><body><a href="/apply">Application</a><a href="/apply">Apply for this job</a></body></html>');
+    return;
+  }
   response.writeHead(200, { 'content-type': 'text/html' });
   response.end(`<!doctype html><html><body>
     <form id="application"><label for="first">First name</label><input id="first" name="first_name" required>
@@ -64,6 +69,11 @@ try {
   const navigated = await detailPort.inspect(`http://127.0.0.1:${address.port}/detail`);
   expect(navigated.fields.length === 4 && navigated.url.endsWith('/apply'), 'follows one unambiguous allowlisted Apply link to the actual form');
   await detailPort.close();
+
+  const duplicateDetailPort = createPlaywrightApplicationPort({ root: sandbox, allowedHosts: ['127.0.0.1'], allowLocal: true });
+  const duplicateNavigated = await duplicateDetailPort.inspect(`http://127.0.0.1:${address.port}/duplicate-detail`);
+  expect(duplicateNavigated.fields.length === 4 && duplicateNavigated.url.endsWith('/apply'), 'follows duplicated Apply links when they share one unique form target');
+  await duplicateDetailPort.close();
 } catch (error) {
   fail(`Playwright application integration crashed: ${error?.stack || error}`);
 } finally {

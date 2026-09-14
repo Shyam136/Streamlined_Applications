@@ -5,7 +5,7 @@ import path from 'path';
 import { pass, fail } from './helpers.mjs';
 import { createApplicationAgent } from '../application-agent.mjs';
 import { buildApplicationFillPlan } from '../lib/application-form.mjs';
-import { countConfirmedSubmissions } from '../lib/submission-ledger.mjs';
+import { countConfirmedSubmissions, countConfirmedSubmissionsSince } from '../lib/submission-ledger.mjs';
 
 console.log('\nApplicationAgent — guarded form filling and exactly-once submission intent');
 const expect = (condition, message, detail = '') => condition ? pass(message) : fail(`${message}${detail ? `: ${detail}` : ''}`);
@@ -58,6 +58,7 @@ try {
   const replay = await createApplicationAgent({ root: sandbox, browser, tracker }).apply(task('automatic'));
   expect(replay.status === 'ok' && replay.payload?.replay && replay.payload?.submittedThisRun === false && submits === 1, 'fresh-process replay reconciles tracking without counting or submitting twice');
   expect(countConfirmedSubmissions(path.join(sandbox, 'data', 'submission-ledger.json'), new Date().toISOString().slice(0, 10)) === 1, 'confirmed submission ledger supports crash-safe daily-cap reconciliation');
+  expect(countConfirmedSubmissionsSince(path.join(sandbox, 'data', 'submission-ledger.json'), Date.now() - 60 * 60_000) === 1, 'confirmed submission ledger supports a rolling hourly cap');
 
   const crashRoot = path.join(sandbox, 'crash');
   let crashSubmits = 0;

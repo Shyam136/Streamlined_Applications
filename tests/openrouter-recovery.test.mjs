@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import path from 'path';
 
 import { pass, fail } from './helpers.mjs';
-import { findCommittedEvaluation, recoverCommittedEvaluation } from '../openrouter-runner.mjs';
+import { findCommittedEvaluation, recoverCommittedEvaluation, validateEvaluationResult } from '../openrouter-runner.mjs';
 
 console.log('\nOpenRouter pipeline — committed evaluation recovery');
 const expect = (condition, message, detail = '') => condition ? pass(message) : fail(`${message}${detail ? `: ${detail}` : ''}`);
@@ -13,14 +13,57 @@ try {
   mkdirSync(path.join(root, 'reports'), { recursive: true });
   mkdirSync(path.join(root, 'data'), { recursive: true });
   const url = 'https://jobs.example.test/acme/123';
-  writeFileSync(path.join(root, 'reports', '007-acme-2026-09-10.md'), `# Evaluation: Acme - Platform Engineer\n\n**URL:** ${url}\n\n**Score:** 4.4/5\n`);
+  const validEvaluation = `# Evaluation: Acme - Platform Engineer
+
+**URL:** ${url}
+**Score:** 4.4/5
+
+## Machine Summary
+\`\`\`yaml
+company: Acme
+role: Platform Engineer
+score: 4.4
+legitimacy_tier: High Confidence
+archetype: LLMOps
+final_decision: Apply
+hard_stops: []
+soft_gaps: []
+top_strengths: [platform delivery]
+risk_level: Low
+confidence: High
+next_action: Apply
+work_auth: not_needed
+discard_reasons: []
+via: null
+company_confidential: false
+advertised_comp: null
+risk_summary: { legitimacy: high_confidence }
+\`\`\`
+
+## A) Role Summary
+## B) CV Match
+## C) Level and Strategy
+## D) Compensation and Demand
+## E) Personalization Plan
+## F) Interview Plan
+## G) Posting Legitimacy
+## Risk Summary
+## Keywords extracted
+`;
+  writeFileSync(path.join(root, 'reports', '007-acme-2026-09-10.md'), validEvaluation);
   expect(findCommittedEvaluation(url, root)?.relPath === 'reports/007-acme-2026-09-10.md', 'finds a report committed before the pipeline checkpoint');
   expect(findCommittedEvaluation(`${url}4`, root) === null, 'does not recover a different URL by prefix');
+  expect(validateEvaluationResult(validEvaluation).valid, 'accepts a complete machine-readable evaluation');
+  expect(!validateEvaluationResult('I will inspect the files. <tool_call>Read</tool_call>').valid, 'rejects tool-call prose masquerading as an evaluation');
+
+  writeFileSync(path.join(root, 'reports', '008-bad-2026-09-10.md'), `# Evaluation: Bad - Report\n\n**URL:** https://jobs.example.test/bad/8\n\n<tool_call>browser_navigate</tool_call>\n`);
+  expect(findCommittedEvaluation('https://jobs.example.test/bad/8', root) === null, 'does not recover an invalid committed report');
 
   const recovered = recoverCommittedEvaluation(url, { company: 'Acme', role: 'Platform Engineer' }, root);
   const staged = path.join(root, 'batch', 'tracker-additions', 'or-007-acme.tsv');
   expect(recovered && existsSync(staged), 'reconstructs a missing tracker addition from the committed report');
   const first = readFileSync(staged, 'utf-8');
+  expect(first.startsWith('7\t2026-09-10\tAcme\tPlatform Engineer\t'), 'stages a headerless row accepted by merge-tracker');
   recoverCommittedEvaluation(url, { company: 'Acme', role: 'Platform Engineer' }, root);
   expect(readFileSync(staged, 'utf-8') === first, 'replay is byte-stable and does not append duplicate tracker intents');
 
