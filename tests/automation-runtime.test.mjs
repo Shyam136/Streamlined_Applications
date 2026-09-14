@@ -15,6 +15,7 @@ const basePolicy = {
 
 try {
   expect(validateAutomationPolicy(basePolicy).length === 0, 'review-mode policy validates');
+  expect(validateAutomationPolicy({ ...basePolicy, maxApplicationsPerHour: 0, maxApplicationsPerDay: 0 }).length === 0, 'zero application caps explicitly enable unlimited mode');
   const unsafe = structuredClone(basePolicy);
   unsafe.submission.mode = 'automatic';
   expect(validateAutomationPolicy(unsafe).some((item) => item.code === 'SUBMISSION_AUTHORIZATION_REQUIRED'), 'automatic submission requires an explicit authorization token');

@@ -209,10 +209,13 @@ export function createCompatibilityPhases(policy, options = {}) {
       return { status: 'ok', diagnostics: reviewDiagnostics, tailoredCount: results.length, reviewCount: queue.blocked.length, results };
     },
     submit: async ({ today, usedToday }) => {
-      const dailyRemaining = Math.max(0, policy.maxApplicationsPerDay - usedToday);
+      const dailyRemaining = policy.maxApplicationsPerDay > 0
+        ? Math.max(0, policy.maxApplicationsPerDay - usedToday)
+        : Number.POSITIVE_INFINITY;
       const hourlyCap = policy.maxApplicationsPerHour ?? policy.maxApplicationsPerDay;
-      const submittedLastHour = countConfirmedSubmissionsSince(submissionLedger, Date.now() - 60 * 60_000);
-      const hourlyRemaining = Math.max(0, hourlyCap - submittedLastHour);
+      const hourlyRemaining = hourlyCap > 0
+        ? Math.max(0, hourlyCap - countConfirmedSubmissionsSince(submissionLedger, Date.now() - 60 * 60_000))
+        : Number.POSITIVE_INFINITY;
       const remaining = Math.min(dailyRemaining, hourlyRemaining);
       if (remaining === 0) return { status: 'ok', diagnostics: [], submittedCount: 0, reviewedCount: 0, hourlyCapReached: true };
       const queue = buildApplicationQueue({ root, minScore: policy.minScore, limit: remaining });

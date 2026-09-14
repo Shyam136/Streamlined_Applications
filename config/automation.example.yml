@@ -1,5 +1,6 @@
 # Copy to config/automation.yml after onboarding and review every limit.
 interval_minutes: 60
+# Set either cap to 0 to disable it. External job-board limits still apply.
 max_applications_per_hour: 15
 max_applications_per_day: 20
 min_score: 4.0
