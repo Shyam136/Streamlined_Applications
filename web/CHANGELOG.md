@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.6.0](https://github.com/Shyam136/Streamlined_Applications/compare/web-v0.5.0...web-v0.6.0) (2026-09-14)
+
+
+### Features
+
+* **patterns:** per-agency advance-rate analysis from the Via channel ([b6ce551](https://github.com/Shyam136/Streamlined_Applications/commit/b6ce551e4404f15b20404ecc642886cfe8a2c4c5))
+* **providers:** add VDAB zero-auth provider ([#2084](https://github.com/Shyam136/Streamlined_Applications/issues/2084)) ([6164384](https://github.com/Shyam136/Streamlined_Applications/commit/6164384768fa47b7e164e2c36f53e86b2fd620cc))
+* **tracker:** Via channel — end employer vs recruiter/agency intermediary ([#1599](https://github.com/Shyam136/Streamlined_Applications/issues/1599)) ([b66c0b4](https://github.com/Shyam136/Streamlined_Applications/commit/b66c0b4a76e9f3738bbddac2ebeb612053e0a9cc))
+* **web:** Follow-up Tracker page with logging, history, and cadence settings ([#1422](https://github.com/Shyam136/Streamlined_Applications/issues/1422)) ([6554de6](https://github.com/Shyam136/Streamlined_Applications/commit/6554de6dcd28b95556e95ae220aebc719cc7a2a0))
+
+
+### Bug Fixes
+
+* **dashboard:** localize the hired status label and buffer split stream openers ([#2295](https://github.com/Shyam136/Streamlined_Applications/issues/2295)) ([8f5d10d](https://github.com/Shyam136/Streamlined_Applications/commit/8f5d10d6aa97438a4ac3908814456df5a8cf4083))
+* **deps:** update dependency next to v16.2.11 [security] ([#2198](https://github.com/Shyam136/Streamlined_Applications/issues/2198)) ([b6d1c87](https://github.com/Shyam136/Streamlined_Applications/commit/b6d1c871d985c278af51d26fa51ef09274c1076b))
+* **deps:** update npm dependencies ([#1593](https://github.com/Shyam136/Streamlined_Applications/issues/1593)) ([253c571](https://github.com/Shyam136/Streamlined_Applications/commit/253c5719df403cdaa493db27cdd17349f54f7889))
+* **tracker:** retrofit remaining positional readers onto the shared header-aware parser ([#1598](https://github.com/Shyam136/Streamlined_Applications/issues/1598)) ([369a5ff](https://github.com/Shyam136/Streamlined_Applications/commit/369a5ffcf6623750fcbedbd16be7d3c1c84f1111))
+* **web:** 44px tap-targets at the component level ([#1629](https://github.com/Shyam136/Streamlined_Applications/issues/1629)) ([388542f](https://github.com/Shyam136/Streamlined_Applications/commit/388542f3c0a2f82eeac83be8db5b616c213225b9))
+* **web:** add Hired to the states.ts FALLBACK so the degraded path accepts it ([#2282](https://github.com/Shyam136/Streamlined_Applications/issues/2282)) ([fd112c9](https://github.com/Shyam136/Streamlined_Applications/commit/fd112c972d23cf0028e0411f36f67b1adf5520db))
+* **web:** contrast tokens — AA across both themes ([#1627](https://github.com/Shyam136/Streamlined_Applications/issues/1627)) ([ee89bea](https://github.com/Shyam136/Streamlined_Applications/commit/ee89bea997702d40d1cc01620f727bbb66146b9b))
+* **web:** label-aware pipeline.md reader — posted:/trust:/note: never misread as columns ([6c75d9a](https://github.com/Shyam136/Streamlined_Applications/commit/6c75d9aa03c919803ffe6939b2ba6f1cf7238db6))
+* **web:** portals copy + analytics semantics ([#1628](https://github.com/Shyam136/Streamlined_Applications/issues/1628)) ([f8daa19](https://github.com/Shyam136/Streamlined_Applications/commit/f8daa19d8ea164dd2bbb63834f2d048a34ccaa63))
+* **web:** propagate the Hired terminal-success state across the whole dashboard ([#2250](https://github.com/Shyam136/Streamlined_Applications/issues/2250)) ([29503dc](https://github.com/Shyam136/Streamlined_Applications/commit/29503dca07c4f1725675299db48685565f159acb))
+* **web:** render PDFs from the backend instead of the spawned agent ([#2182](https://github.com/Shyam136/Streamlined_Applications/issues/2182)) ([fef3ff2](https://github.com/Shyam136/Streamlined_Applications/commit/fef3ff2e228cc14e55df4ced958e4b0aa630ec65))
+* **web:** resolve nested postcss and sharp advisories via overrides ([#2216](https://github.com/Shyam136/Streamlined_Applications/issues/2216)) ([ec02af8](https://github.com/Shyam136/Streamlined_Applications/commit/ec02af816abc81b500475f81bf1c2753727a1e79))
+* **web:** ux-audit cleanup — CostBadge global CSS + last sub-44 stragglers ([#1648](https://github.com/Shyam136/Streamlined_Applications/issues/1648)) ([786b960](https://github.com/Shyam136/Streamlined_Applications/commit/786b960c2761e88a534886eafdc9d59f82aba56b))
+
 ## [0.5.0](https://github.com/santifer/career-ops/compare/web-v0.4.0...web-v0.5.0) (2026-07-30)
 
 
